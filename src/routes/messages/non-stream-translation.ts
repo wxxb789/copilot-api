@@ -1,4 +1,3 @@
-import { state } from "~/lib/state"
 import {
   type ChatCompletionResponse,
   type ChatCompletionsPayload,
@@ -48,17 +47,11 @@ export function translateToOpenAI(
 }
 
 function translateModelName(model: string): string {
-  if (
-    state.models?.data.some((availableModel) => availableModel.id === model)
-  ) {
-    return model
-  }
-
   // Subagent requests use a specific model number which Copilot doesn't support
   if (/^claude-sonnet-4(?:[.-].*)?$/.test(model)) {
-    return "claude-sonnet-4"
+    return "claude-sonnet-4.5"
   } else if (/^claude-opus-4(?:[.-].*)?$/.test(model)) {
-    return "claude-opus-4"
+    return "claude-opus-4.5"
   }
   return model
 }
@@ -72,7 +65,7 @@ function translateAnthropicMessagesToOpenAI(
   const otherMessages = anthropicMessages.flatMap((message) =>
     message.role === "user" ?
       handleUserMessage(message)
-    : handleAssistantMessage(message),
+      : handleAssistantMessage(message),
   )
 
   return [...systemMessages, ...otherMessages]
@@ -161,26 +154,26 @@ function handleAssistantMessage(
   ].join("\n\n")
 
   return toolUseBlocks.length > 0 ?
-      [
-        {
-          role: "assistant",
-          content: allTextContent || null,
-          tool_calls: toolUseBlocks.map((toolUse) => ({
-            id: toolUse.id,
-            type: "function",
-            function: {
-              name: toolUse.name,
-              arguments: JSON.stringify(toolUse.input),
-            },
-          })),
-        },
-      ]
+    [
+      {
+        role: "assistant",
+        content: allTextContent || null,
+        tool_calls: toolUseBlocks.map((toolUse) => ({
+          id: toolUse.id,
+          type: "function",
+          function: {
+            name: toolUse.name,
+            arguments: JSON.stringify(toolUse.input),
+          },
+        })),
+      },
+    ]
     : [
-        {
-          role: "assistant",
-          content: mapContent(message.content),
-        },
-      ]
+      {
+        role: "assistant",
+        content: mapContent(message.content),
+      },
+    ]
 }
 
 function mapContent(
