@@ -29,6 +29,12 @@ export async function handleCompletion(c: Context) {
   consola.debug("Anthropic request payload:", JSON.stringify(anthropicPayload))
 
   const openAIPayload = translateToOpenAI(anthropicPayload)
+  consola.info(
+    "Claude Code requested model:",
+    anthropicPayload.model,
+    "-> Copilot model:",
+    openAIPayload.model,
+  )
   consola.debug(
     "Translated OpenAI request payload:",
     JSON.stringify(openAIPayload),
