@@ -1,9 +1,9 @@
 import { describe, test, expect } from "bun:test"
 import { z } from "zod"
 
-import type { AnthropicMessagesPayload } from "~/routes/messages/anthropic-types"
+import type { AnthropicMessagesPayload } from "~/translator"
 
-import { translateToOpenAI } from "../src/routes/messages/non-stream-translation"
+import { AnthropicTranslator } from "../src/translator"
 
 // Zod schema for a single message in the chat completion request.
 const messageSchema = z.object({
@@ -70,7 +70,8 @@ describe("Anthropic to OpenAI translation logic", () => {
       max_tokens: 0,
     }
 
-    const openAIPayload = translateToOpenAI(anthropicPayload)
+    const translator = new AnthropicTranslator()
+    const openAIPayload = translator.toOpenAI(anthropicPayload)
     expect(isValidChatCompletionRequest(openAIPayload)).toBe(true)
   })
 
@@ -99,7 +100,8 @@ describe("Anthropic to OpenAI translation logic", () => {
       ],
       tool_choice: { type: "auto" },
     }
-    const openAIPayload = translateToOpenAI(anthropicPayload)
+    const translator = new AnthropicTranslator()
+    const openAIPayload = translator.toOpenAI(anthropicPayload)
     expect(isValidChatCompletionRequest(openAIPayload)).toBe(true)
   })
 
@@ -109,7 +111,8 @@ describe("Anthropic to OpenAI translation logic", () => {
       messages: [{ role: "user", content: "Hello!" }],
       max_tokens: 0,
     }
-    const openAIPayload = translateToOpenAI(anthropicPayload)
+    const translator = new AnthropicTranslator()
+    const openAIPayload = translator.toOpenAI(anthropicPayload)
     expect(isValidChatCompletionRequest(openAIPayload)).toBe(true)
   })
 
@@ -120,7 +123,7 @@ describe("Anthropic to OpenAI translation logic", () => {
       temperature: "hot", // Should be a number
     }
     // @ts-expect-error intended to be invalid
-    const openAIPayload = translateToOpenAI(anthropicPayload)
+    const openAIPayload = new AnthropicTranslator().toOpenAI(anthropicPayload)
     // Should fail validation
     expect(isValidChatCompletionRequest(openAIPayload)).toBe(false)
   })
@@ -143,7 +146,8 @@ describe("Anthropic to OpenAI translation logic", () => {
       ],
       max_tokens: 100,
     }
-    const openAIPayload = translateToOpenAI(anthropicPayload)
+    const translator = new AnthropicTranslator()
+    const openAIPayload = translator.toOpenAI(anthropicPayload)
     expect(isValidChatCompletionRequest(openAIPayload)).toBe(true)
 
     // Check that thinking content is combined with text content
@@ -181,7 +185,8 @@ describe("Anthropic to OpenAI translation logic", () => {
       ],
       max_tokens: 100,
     }
-    const openAIPayload = translateToOpenAI(anthropicPayload)
+    const translator = new AnthropicTranslator()
+    const openAIPayload = translator.toOpenAI(anthropicPayload)
     expect(isValidChatCompletionRequest(openAIPayload)).toBe(true)
 
     // Check that thinking content is included in the message content

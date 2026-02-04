@@ -1,13 +1,15 @@
 import { defineCommand } from "citty"
 import consola from "consola"
 
+import type { QuotaDetail } from "~/types"
+
+import { GitHubClient } from "~/clients"
+
+import { getClientConfig } from "./lib/client-config"
 import { ensurePaths } from "./lib/paths"
+import { state } from "./lib/state"
 import { setupGitHubToken } from "./lib/token"
 import { cacheVSCodeVersion } from "./lib/utils"
-import {
-  getCopilotUsage,
-  type QuotaDetail,
-} from "./services/github/get-copilot-usage"
 
 export const checkUsage = defineCommand({
   meta: {
@@ -19,7 +21,8 @@ export const checkUsage = defineCommand({
     await cacheVSCodeVersion()
     await setupGitHubToken()
     try {
-      const usage = await getCopilotUsage()
+      const githubClient = new GitHubClient(state.auth, getClientConfig(state))
+      const usage = await githubClient.getCopilotUsage()
       const premium = usage.quota_snapshots.premium_interactions
       const premiumTotal = premium.entitlement
       const premiumUsed = premiumTotal - premium.remaining

@@ -6,6 +6,9 @@ import consola from "consola"
 import { serve, type ServerHandler } from "srvx"
 import invariant from "tiny-invariant"
 
+import { CopilotClient } from "~/clients"
+
+import { getClientConfig } from "./lib/client-config"
 import { ensurePaths } from "./lib/paths"
 import { initProxyFromEnv } from "./lib/proxy"
 import { generateEnvScript } from "./lib/shell"
@@ -28,6 +31,21 @@ interface RunServerOptions {
 }
 
 export async function runServer(options: RunServerOptions): Promise<void> {
+  const accountType: ReturnType<typeof getClientConfig>["accountType"] =
+    (
+      options.accountType === "individual"
+      || options.accountType === "business"
+      || options.accountType === "enterprise"
+    ) ?
+      options.accountType
+    : "individual"
+
+  if (accountType !== options.accountType) {
+    consola.warn(
+      `Unknown account type "${options.accountType}". Falling back to "individual".`,
+    )
+  }
+
   if (options.proxyEnv) {
     initProxyFromEnv()
   }
@@ -37,9 +55,9 @@ export async function runServer(options: RunServerOptions): Promise<void> {
     consola.info("Verbose logging enabled")
   }
 
-  state.config.accountType = options.accountType
-  if (options.accountType !== "individual") {
-    consola.info(`Using ${options.accountType} plan GitHub account`)
+  state.config.accountType = accountType
+  if (accountType !== "individual") {
+    consola.info(`Using ${accountType} plan GitHub account`)
   }
 
   state.config.manualApprove = options.manual
@@ -58,7 +76,13 @@ export async function runServer(options: RunServerOptions): Promise<void> {
   }
 
   await setupCopilotToken()
-  await cacheModels()
+
+  const clientConfig: ReturnType<typeof getClientConfig> = {
+    ...getClientConfig(state),
+    accountType,
+  }
+  const copilotClient = new CopilotClient(state.auth, clientConfig)
+  await cacheModels(copilotClient)
 
   consola.info(
     `Available models: \n${state.cache.models?.data.map((model) => `- ${model.id}`).join("\n")}`,

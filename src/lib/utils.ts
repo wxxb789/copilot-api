@@ -1,8 +1,8 @@
 import consola from "consola"
 
-import { getModels } from "~/services/copilot/get-models"
-import { getVSCodeVersion } from "~/services/get-vscode-version"
+import { CopilotClient, getVSCodeVersion } from "~/clients"
 
+import { getClientConfig } from "./client-config"
 import { state } from "./state"
 
 export const sleep = (ms: number) =>
@@ -13,8 +13,12 @@ export const sleep = (ms: number) =>
 export const isNullish = (value: unknown): value is null | undefined =>
   value === null || value === undefined
 
-export async function cacheModels(): Promise<void> {
-  const models = await getModels()
+export async function cacheModels(client?: CopilotClient): Promise<void> {
+  const copilotClient =
+    client ?? new CopilotClient(state.auth, getClientConfig(state))
+
+  const models = await copilotClient.getModels()
+  // eslint-disable-next-line require-atomic-updates
   state.cache.models = models
 }
 

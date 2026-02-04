@@ -1,9 +1,8 @@
 import consola from "consola"
 import { z } from "zod"
 
-import type { AnthropicMessagesPayload } from "~/routes/messages/anthropic-types"
-import type { ChatCompletionsPayload } from "~/services/copilot/create-chat-completions"
-import type { EmbeddingRequest } from "~/services/copilot/create-embeddings"
+import type { AnthropicMessagesPayload } from "~/translator"
+import type { ChatCompletionsPayload, EmbeddingRequest } from "~/types"
 
 import { HTTPError } from "./error"
 

@@ -1,14 +1,13 @@
 import consola from "consola"
 import fs from "node:fs/promises"
 
+import { GitHubClient } from "~/clients"
 import { PATHS } from "~/lib/paths"
-import { getCopilotToken } from "~/services/github/get-copilot-token"
-import { getDeviceCode } from "~/services/github/get-device-code"
-import { getGitHubUser } from "~/services/github/get-user"
-import { pollAccessToken } from "~/services/github/poll-access-token"
 
+import { getClientConfig } from "./client-config"
 import { HTTPError } from "./error"
 import { state } from "./state"
+import { cacheVSCodeVersion } from "./utils"
 
 const readGithubToken = () => fs.readFile(PATHS.GITHUB_TOKEN_PATH, "utf8")
 
@@ -16,7 +15,9 @@ const writeGithubToken = (token: string) =>
   fs.writeFile(PATHS.GITHUB_TOKEN_PATH, token)
 
 export const setupCopilotToken = async () => {
-  const { token, refresh_in } = await getCopilotToken()
+  await ensureVSCodeVersion()
+  const githubClient = createGitHubClient()
+  const { token, refresh_in } = await githubClient.getCopilotToken()
   state.auth.copilotToken = token
 
   // Display the Copilot token to the screen
@@ -29,7 +30,7 @@ export const setupCopilotToken = async () => {
   const refreshCopilotToken = async () => {
     consola.debug("Refreshing Copilot token")
     try {
-      const { token } = await getCopilotToken()
+      const { token } = await githubClient.getCopilotToken()
       state.auth.copilotToken = token
       consola.debug("Copilot token refreshed")
       if (state.config.showToken) {
@@ -53,6 +54,7 @@ export async function setupGitHubToken(
   options?: SetupGitHubTokenOptions,
 ): Promise<void> {
   try {
+    await ensureVSCodeVersion()
     const githubToken = (await readGithubToken()).trim()
 
     if (githubToken && !options?.force) {
@@ -76,14 +78,15 @@ export async function setupGitHubToken(
     }
 
     consola.info("Not logged in, getting new access token")
-    const response = await getDeviceCode()
+    const githubClient = createGitHubClient()
+    const response = await githubClient.getDeviceCode()
     consola.debug("Device code response:", response)
 
     consola.info(
       `Please enter the code "${response.user_code}" in ${response.verification_uri}`,
     )
 
-    const token = await pollAccessToken(response)
+    const token = await githubClient.pollAccessToken(response)
     await writeGithubToken(token)
     state.auth.githubToken = token
 
@@ -107,6 +110,16 @@ const isAuthError = (error: unknown) =>
   && (error.response.status === 401 || error.response.status === 403)
 
 async function logUser() {
-  const user = await getGitHubUser()
+  const githubClient = createGitHubClient()
+  const user = await githubClient.getGitHubUser()
   consola.info(`Logged in as ${user.login}`)
+}
+
+const createGitHubClient = () =>
+  new GitHubClient(state.auth, getClientConfig(state))
+
+const ensureVSCodeVersion = async () => {
+  if (!state.cache.vsCodeVersion) {
+    await cacheVSCodeVersion()
+  }
 }

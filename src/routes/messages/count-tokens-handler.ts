@@ -5,8 +5,7 @@ import consola from "consola"
 import { state } from "~/lib/state"
 import { getTokenCount } from "~/lib/tokenizer"
 import { parseAnthropicMessagesPayload } from "~/lib/validation"
-
-import { translateToOpenAI } from "./non-stream-translation"
+import { AnthropicTranslator } from "~/translator"
 
 /**
  * Handles token counting for Anthropic messages
@@ -17,7 +16,8 @@ export async function handleCountTokens(c: Context) {
 
     const anthropicPayload = parseAnthropicMessagesPayload(await c.req.json())
 
-    const openAIPayload = translateToOpenAI(anthropicPayload)
+    const translator = new AnthropicTranslator()
+    const openAIPayload = translator.toOpenAI(anthropicPayload)
 
     const selectedModel = state.cache.models?.data.find(
       (model) => model.id === anthropicPayload.model,

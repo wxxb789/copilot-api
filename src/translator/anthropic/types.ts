@@ -197,10 +197,12 @@ export interface AnthropicStreamState {
   contentBlockIndex: number
   contentBlockOpen: boolean
   toolCalls: {
-    [openAIToolIndex: number]: {
-      id: string
-      name: string
-      anthropicBlockIndex: number
-    }
+    [openAIToolIndex: number]:
+      | {
+          id: string
+          name: string
+          anthropicBlockIndex: number
+        }
+      | undefined
   }
 }

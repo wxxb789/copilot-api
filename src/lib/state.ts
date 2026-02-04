@@ -1,4 +1,4 @@
-import type { ModelsResponse } from "~/services/copilot/get-models"
+import type { ModelsResponse } from "~/types"
 
 export interface AuthState {
   githubToken?: string
@@ -6,7 +6,7 @@ export interface AuthState {
 }
 
 export interface RuntimeConfig {
-  accountType: string
+  accountType: "individual" | "business" | "enterprise"
   manualApprove: boolean
   rateLimitSeconds?: number
   rateLimitWait: boolean

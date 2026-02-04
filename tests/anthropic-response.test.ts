@@ -1,14 +1,9 @@
 import { describe, test, expect } from "bun:test"
 import { z } from "zod"
 
-import type {
-  ChatCompletionChunk,
-  ChatCompletionResponse,
-} from "~/services/copilot/create-chat-completions"
+import type { ChatCompletionChunk, ChatCompletionResponse } from "~/types"
 
-import { type AnthropicStreamState } from "~/routes/messages/anthropic-types"
-import { translateToAnthropic } from "~/routes/messages/non-stream-translation"
-import { translateChunkToAnthropicEvents } from "~/routes/messages/stream-translation"
+import { AnthropicTranslator } from "~/translator"
 
 const anthropicUsageSchema = z.object({
   input_tokens: z.number().int(),
@@ -92,7 +87,8 @@ describe("OpenAI to Anthropic Non-Streaming Response Translation", () => {
       },
     }
 
-    const anthropicResponse = translateToAnthropic(openAIResponse)
+    const translator = new AnthropicTranslator()
+    const anthropicResponse = translator.fromOpenAI(openAIResponse)
 
     expect(isValidAnthropicResponse(anthropicResponse)).toBe(true)
 
@@ -143,7 +139,8 @@ describe("OpenAI to Anthropic Non-Streaming Response Translation", () => {
       },
     }
 
-    const anthropicResponse = translateToAnthropic(openAIResponse)
+    const translator = new AnthropicTranslator()
+    const anthropicResponse = translator.fromOpenAI(openAIResponse)
 
     expect(isValidAnthropicResponse(anthropicResponse)).toBe(true)
 
@@ -184,7 +181,8 @@ describe("OpenAI to Anthropic Non-Streaming Response Translation", () => {
       },
     }
 
-    const anthropicResponse = translateToAnthropic(openAIResponse)
+    const translator = new AnthropicTranslator()
+    const anthropicResponse = translator.fromOpenAI(openAIResponse)
 
     expect(isValidAnthropicResponse(anthropicResponse)).toBe(true)
     expect(anthropicResponse.stop_reason).toBe("max_tokens")
@@ -247,14 +245,10 @@ describe("OpenAI to Anthropic Streaming Response Translation", () => {
       },
     ]
 
-    const streamState: AnthropicStreamState = {
-      messageStartSent: false,
-      contentBlockIndex: 0,
-      contentBlockOpen: false,
-      toolCalls: {},
-    }
+    const translator = new AnthropicTranslator()
+    const streamTranslator = translator.createStreamTranslator()
     const translatedStream = openAIStream.flatMap((chunk) =>
-      translateChunkToAnthropicEvents(chunk, streamState),
+      streamTranslator.onChunk(chunk),
     )
 
     for (const event of translatedStream) {
@@ -347,14 +341,10 @@ describe("OpenAI to Anthropic Streaming Response Translation", () => {
     ]
 
     // Streaming translation requires state
-    const streamState: AnthropicStreamState = {
-      messageStartSent: false,
-      contentBlockIndex: 0,
-      contentBlockOpen: false,
-      toolCalls: {},
-    }
+    const translator = new AnthropicTranslator()
+    const streamTranslator = translator.createStreamTranslator()
     const translatedStream = openAIStream.flatMap((chunk) =>
-      translateChunkToAnthropicEvents(chunk, streamState),
+      streamTranslator.onChunk(chunk),
     )
 
     // These tests will fail until the stub is implemented

@@ -3,14 +3,14 @@ import type { Context } from "hono"
 import consola from "consola"
 import { streamSSE, type SSEMessage } from "hono/streaming"
 
+import type { ChatCompletionResponse } from "~/types"
+
+import { CopilotClient } from "~/clients"
+import { getClientConfig } from "~/lib/client-config"
 import { state } from "~/lib/state"
 import { getTokenCount } from "~/lib/tokenizer"
 import { isNullish } from "~/lib/utils"
 import { parseOpenAIChatPayload } from "~/lib/validation"
-import {
-  createChatCompletions,
-  type ChatCompletionResponse,
-} from "~/services/copilot/create-chat-completions"
 
 export async function handleCompletion(c: Context) {
   let payload = parseOpenAIChatPayload(await c.req.json())
@@ -41,7 +41,8 @@ export async function handleCompletion(c: Context) {
     consola.debug("Set max_tokens to:", JSON.stringify(payload.max_tokens))
   }
 
-  const response = await createChatCompletions(payload)
+  const copilotClient = new CopilotClient(state.auth, getClientConfig(state))
+  const response = await copilotClient.createChatCompletions(payload)
 
   if (isNonStreaming(response)) {
     consola.debug("Non-streaming response:", JSON.stringify(response))
@@ -58,5 +59,5 @@ export async function handleCompletion(c: Context) {
 }
 
 const isNonStreaming = (
-  response: Awaited<ReturnType<typeof createChatCompletions>>,
+  response: Awaited<ReturnType<CopilotClient["createChatCompletions"]>>,
 ): response is ChatCompletionResponse => Object.hasOwn(response, "choices")

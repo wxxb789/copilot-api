@@ -1,10 +1,13 @@
 import { Hono } from "hono"
 
-import { getCopilotUsage } from "~/services/github/get-copilot-usage"
+import { GitHubClient } from "~/clients"
+import { getClientConfig } from "~/lib/client-config"
+import { state } from "~/lib/state"
 
 export const usageRoute = new Hono()
 
 usageRoute.get("/", async (c) => {
-  const usage = await getCopilotUsage()
+  const githubClient = new GitHubClient(state.auth, getClientConfig(state))
+  const usage = await githubClient.getCopilotUsage()
   return c.json(usage)
 })
