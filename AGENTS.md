@@ -13,7 +13,7 @@
 - **Test all:**  
    `bun test`
 - **Test single file:**  
-   `bun test tests/claude-request.test.ts`
+   `bun test tests/anthropic-request.test.ts`
 - **Start (prod):**  
   `bun run start`
 
@@ -21,6 +21,7 @@
 
 - **Imports:**  
   Use ESNext syntax. Prefer absolute imports via `~/*` for `src/*` (see `tsconfig.json`).
+  Prefer index exports: `import { ... } from "~/clients"`, `import type { ... } from "~/types"`, `import { ... } from "~/translator"`.
 - **Formatting:**  
   Follows Prettier (with `prettier-plugin-packagejson`). Run `bun run lint` to auto-fix.
 - **Types:**  
@@ -40,7 +41,7 @@
 - **Linting:**  
   Uses `@echristian/eslint-config` (see npm for details). Includes stylistic, unused imports, regex, and package.json rules.
 - **Paths:**  
-  Use path aliases (`~/*`) for imports from `src/`.
+  Use path aliases (`~/*`) for imports from `src/`. Favor `~/clients`, `~/types`, and `~/translator` as public module entrypoints.
 
 ---
 

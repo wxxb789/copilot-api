@@ -40,6 +40,17 @@ A reverse-engineered proxy for the GitHub Copilot API that exposes it as an Open
 - **Flexible Authentication**: Authenticate interactively or provide a GitHub token directly, suitable for CI/CD environments.
 - **Support for Different Account Types**: Works with individual, business, and enterprise GitHub Copilot plans.
 
+## Architecture & Code Layout
+
+- `src/main.ts`: CLI entry and subcommand wiring.
+- `src/start.ts`: Server bootstrap, authentication flow, model cache warmup.
+- `src/server.ts`: Hono server and route registration.
+- `src/routes/*`: OpenAI and Anthropic compatible handlers.
+- `src/clients/*`: GitHub/Copilot API clients and shared config/auth types.
+- `src/translator/*`: Anthropic <-> OpenAI translation (streaming and non-streaming).
+- `src/types/*`: Shared API payload/response types.
+- `src/lib/*`: Shared utilities (state, validation, token, tokenizer, config).
+
 ## Demo
 
 https://github.com/user-attachments/assets/7654b383-669d-4eb9-b23c-06d7aefee8c5
