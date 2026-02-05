@@ -8,7 +8,6 @@ import type { ChatCompletionChunk, ChatCompletionResponse } from "~/types"
 import { CopilotClient } from "~/clients"
 import { getClientConfig } from "~/lib/client-config"
 import { setModelMappingInfo } from "~/lib/request-logger"
-import { createSseWriteQueue } from "~/lib/sse"
 import { state } from "~/lib/state"
 import { parseAnthropicMessagesPayload } from "~/lib/validation"
 import { AnthropicTranslator } from "~/translator"
@@ -56,7 +55,18 @@ export async function handleCompletion(c: Context) {
       state.config.sseKeepaliveSeconds && state.config.sseKeepaliveSeconds > 0 ?
         state.config.sseKeepaliveSeconds * 1000
       : 0
-    const { sendSse, stop } = createSseWriteQueue(stream, { keepaliveMs })
+    const heartbeat =
+      keepaliveMs > 0 ?
+        setInterval(() => {
+          void stream.write(": ping\n\n")
+        }, keepaliveMs)
+      : undefined
+
+    if (heartbeat) {
+      stream.onAbort(() => {
+        clearInterval(heartbeat)
+      })
+    }
     const streamTranslator = translator.createStreamTranslator()
 
     try {
@@ -75,14 +85,16 @@ export async function handleCompletion(c: Context) {
 
         for (const event of events) {
           consola.debug("Translated Anthropic event:", JSON.stringify(event))
-          await sendSse({
+          await stream.writeSSE({
             event: event.type,
             data: JSON.stringify(event),
           })
         }
       }
     } finally {
-      stop()
+      if (heartbeat) {
+        clearInterval(heartbeat)
+      }
     }
   })
 }
