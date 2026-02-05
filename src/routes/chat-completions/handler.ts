@@ -7,6 +7,7 @@ import type { ChatCompletionResponse } from "~/types"
 
 import { CopilotClient } from "~/clients"
 import { getClientConfig } from "~/lib/client-config"
+import { createSseWriteQueue } from "~/lib/sse"
 import { state } from "~/lib/state"
 import { getTokenCount } from "~/lib/tokenizer"
 import { isNullish } from "~/lib/utils"
@@ -51,9 +52,18 @@ export async function handleCompletion(c: Context) {
 
   consola.debug("Streaming response")
   return streamSSE(c, async (stream) => {
-    for await (const chunk of response) {
-      consola.debug("Streaming chunk:", JSON.stringify(chunk))
-      await stream.writeSSE(chunk as SSEMessage)
+    const keepaliveMs =
+      state.config.sseKeepaliveSeconds && state.config.sseKeepaliveSeconds > 0 ?
+        state.config.sseKeepaliveSeconds * 1000
+      : 0
+    const { sendSse, stop } = createSseWriteQueue(stream, { keepaliveMs })
+    try {
+      for await (const chunk of response) {
+        consola.debug("Streaming chunk:", JSON.stringify(chunk))
+        await sendSse(chunk as SSEMessage)
+      }
+    } finally {
+      stop()
     }
   })
 }

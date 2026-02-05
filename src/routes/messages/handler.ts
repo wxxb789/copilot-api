@@ -8,6 +8,7 @@ import type { ChatCompletionChunk, ChatCompletionResponse } from "~/types"
 import { CopilotClient } from "~/clients"
 import { getClientConfig } from "~/lib/client-config"
 import { setModelMappingInfo } from "~/lib/request-logger"
+import { createSseWriteQueue } from "~/lib/sse"
 import { state } from "~/lib/state"
 import { parseAnthropicMessagesPayload } from "~/lib/validation"
 import { AnthropicTranslator } from "~/translator"
@@ -51,28 +52,37 @@ export async function handleCompletion(c: Context) {
 
   consola.debug("Streaming response from Copilot")
   return streamSSE(c, async (stream) => {
+    const keepaliveMs =
+      state.config.sseKeepaliveSeconds && state.config.sseKeepaliveSeconds > 0 ?
+        state.config.sseKeepaliveSeconds * 1000
+      : 0
+    const { sendSse, stop } = createSseWriteQueue(stream, { keepaliveMs })
     const streamTranslator = translator.createStreamTranslator()
 
-    for await (const rawEvent of response) {
-      consola.debug("Copilot raw stream event:", JSON.stringify(rawEvent))
-      if (rawEvent.data === "[DONE]") {
-        break
-      }
+    try {
+      for await (const rawEvent of response) {
+        consola.debug("Copilot raw stream event:", JSON.stringify(rawEvent))
+        if (rawEvent.data === "[DONE]") {
+          break
+        }
 
-      if (!rawEvent.data) {
-        continue
-      }
+        if (!rawEvent.data) {
+          continue
+        }
 
-      const chunk = JSON.parse(rawEvent.data) as ChatCompletionChunk
-      const events = streamTranslator.onChunk(chunk)
+        const chunk = JSON.parse(rawEvent.data) as ChatCompletionChunk
+        const events = streamTranslator.onChunk(chunk)
 
-      for (const event of events) {
-        consola.debug("Translated Anthropic event:", JSON.stringify(event))
-        await stream.writeSSE({
-          event: event.type,
-          data: JSON.stringify(event),
-        })
+        for (const event of events) {
+          consola.debug("Translated Anthropic event:", JSON.stringify(event))
+          await sendSse({
+            event: event.type,
+            data: JSON.stringify(event),
+          })
+        }
       }
+    } finally {
+      stop()
     }
   })
 }

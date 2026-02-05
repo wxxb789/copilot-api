@@ -11,6 +11,7 @@ export interface RuntimeConfig {
   rateLimitSeconds?: number
   rateLimitWait: boolean
   showToken: boolean
+  sseKeepaliveSeconds?: number
 }
 
 export interface CacheState {
@@ -36,6 +37,7 @@ export const state: AppState = {
     manualApprove: false,
     rateLimitWait: false,
     showToken: false,
+    sseKeepaliveSeconds: 60,
   },
   cache: {},
   rateLimit: {},

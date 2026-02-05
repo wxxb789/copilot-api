@@ -28,6 +28,60 @@ interface RunServerOptions {
   claudeCode: boolean
   showToken: boolean
   proxyEnv: boolean
+  idleTimeoutSeconds?: number
+  sseKeepaliveSeconds?: number
+}
+
+async function maybeCopyClaudeCodeCommand(serverUrl: string): Promise<void> {
+  if (!state.cache.models) {
+    return
+  }
+
+  const selectableModels = state.cache.models.data.filter(
+    (model) => model.model_picker_enabled,
+  )
+  const modelOptions =
+    selectableModels.length > 0 ? selectableModels : state.cache.models.data
+
+  const selectedModel = await consola.prompt(
+    "Select a model to use with Claude Code",
+    {
+      type: "select",
+      options: modelOptions.map((model) => model.id),
+    },
+  )
+
+  const selectedSmallModel = await consola.prompt(
+    "Select a small model to use with Claude Code",
+    {
+      type: "select",
+      options: modelOptions.map((model) => model.id),
+    },
+  )
+
+  const command = generateEnvScript(
+    {
+      ANTHROPIC_BASE_URL: serverUrl,
+      ANTHROPIC_AUTH_TOKEN: "dummy",
+      ANTHROPIC_MODEL: selectedModel,
+      ANTHROPIC_DEFAULT_SONNET_MODEL: selectedModel,
+      ANTHROPIC_SMALL_FAST_MODEL: selectedSmallModel,
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: selectedSmallModel,
+      DISABLE_NON_ESSENTIAL_MODEL_CALLS: "1",
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
+    },
+    "claude",
+  )
+
+  try {
+    clipboard.writeSync(command)
+    consola.success("Copied Claude Code command to clipboard!")
+  } catch {
+    consola.warn(
+      "Failed to copy to clipboard. Here is the Claude Code command:",
+    )
+    consola.log(command)
+  }
 }
 
 export async function runServer(options: RunServerOptions): Promise<void> {
@@ -60,18 +114,22 @@ export async function runServer(options: RunServerOptions): Promise<void> {
     consola.info(`Using ${accountType} plan GitHub account`)
   }
 
+  if (options.githubToken) {
+    state.auth.githubToken = options.githubToken
+    consola.info("Using provided GitHub token")
+  }
+
   state.config.manualApprove = options.manual
   state.config.rateLimitSeconds = options.rateLimit
   state.config.rateLimitWait = options.rateLimitWait
   state.config.showToken = options.showToken
+  state.config.sseKeepaliveSeconds =
+    options.sseKeepaliveSeconds ?? state.config.sseKeepaliveSeconds
 
   await ensurePaths()
   await cacheVSCodeVersion()
 
-  if (options.githubToken) {
-    state.auth.githubToken = options.githubToken
-    consola.info("Using provided GitHub token")
-  } else {
+  if (!options.githubToken) {
     await setupGitHubToken()
   }
 
@@ -92,52 +150,7 @@ export async function runServer(options: RunServerOptions): Promise<void> {
 
   if (options.claudeCode) {
     invariant(state.cache.models, "Models should be loaded by now")
-
-    const selectableModels = state.cache.models.data.filter(
-      (model) => model.model_picker_enabled,
-    )
-    const modelOptions =
-      selectableModels.length > 0 ? selectableModels : state.cache.models.data
-
-    const selectedModel = await consola.prompt(
-      "Select a model to use with Claude Code",
-      {
-        type: "select",
-        options: modelOptions.map((model) => model.id),
-      },
-    )
-
-    const selectedSmallModel = await consola.prompt(
-      "Select a small model to use with Claude Code",
-      {
-        type: "select",
-        options: modelOptions.map((model) => model.id),
-      },
-    )
-
-    const command = generateEnvScript(
-      {
-        ANTHROPIC_BASE_URL: serverUrl,
-        ANTHROPIC_AUTH_TOKEN: "dummy",
-        ANTHROPIC_MODEL: selectedModel,
-        ANTHROPIC_DEFAULT_SONNET_MODEL: selectedModel,
-        ANTHROPIC_SMALL_FAST_MODEL: selectedSmallModel,
-        ANTHROPIC_DEFAULT_HAIKU_MODEL: selectedSmallModel,
-        DISABLE_NON_ESSENTIAL_MODEL_CALLS: "1",
-        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
-      },
-      "claude",
-    )
-
-    try {
-      clipboard.writeSync(command)
-      consola.success("Copied Claude Code command to clipboard!")
-    } catch {
-      consola.warn(
-        "Failed to copy to clipboard. Here is the Claude Code command:",
-      )
-      consola.log(command)
-    }
+    await maybeCopyClaudeCodeCommand(serverUrl)
   }
 
   consola.box(
@@ -147,6 +160,10 @@ export async function runServer(options: RunServerOptions): Promise<void> {
   serve({
     fetch: server.fetch as ServerHandler,
     port: options.port,
+    bun:
+      options.idleTimeoutSeconds === undefined ?
+        undefined
+      : { idleTimeout: options.idleTimeoutSeconds },
   })
 }
 
@@ -214,12 +231,55 @@ export const start = defineCommand({
       default: false,
       description: "Initialize proxy from environment variables",
     },
+    "idle-timeout": {
+      type: "string",
+      default: "120",
+      description: "Bun server idle timeout in seconds",
+    },
+    "sse-keepalive": {
+      type: "string",
+      default: "60",
+      description: "SSE keepalive interval in seconds (0 disables)",
+    },
   },
   run({ args }) {
     const rateLimitRaw = args["rate-limit"]
     const rateLimit =
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       rateLimitRaw === undefined ? undefined : Number.parseInt(rateLimitRaw, 10)
+    const idleTimeoutRaw = args["idle-timeout"]
+    let idleTimeoutSeconds =
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      idleTimeoutRaw === undefined ? undefined : (
+        Number.parseInt(idleTimeoutRaw, 10)
+      )
+    if (
+      idleTimeoutSeconds !== undefined
+      && (Number.isNaN(idleTimeoutSeconds) || idleTimeoutSeconds < 0)
+    ) {
+      consola.warn(
+        `Invalid --idle-timeout value "${idleTimeoutRaw}". Falling back to Bun default.`,
+      )
+      idleTimeoutSeconds = undefined
+    }
+    const sseKeepaliveRaw = args["sse-keepalive"]
+    let sseKeepaliveSeconds =
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      sseKeepaliveRaw === undefined ? undefined : (
+        Number.parseInt(sseKeepaliveRaw, 10)
+      )
+    if (
+      sseKeepaliveSeconds !== undefined
+      && (Number.isNaN(sseKeepaliveSeconds) || sseKeepaliveSeconds < 0)
+    ) {
+      consola.warn(
+        `Invalid --sse-keepalive value "${sseKeepaliveRaw}". Disabling keepalive.`,
+      )
+      sseKeepaliveSeconds = undefined
+    }
+    if (sseKeepaliveSeconds === 0) {
+      sseKeepaliveSeconds = undefined
+    }
 
     return runServer({
       port: Number.parseInt(args.port, 10),
@@ -232,6 +292,8 @@ export const start = defineCommand({
       claudeCode: args["claude-code"],
       showToken: args["show-token"],
       proxyEnv: args["proxy-env"],
+      idleTimeoutSeconds,
+      sseKeepaliveSeconds,
     })
   },
 })
