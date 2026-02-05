@@ -1,14 +1,15 @@
 import { test, expect, mock } from "bun:test"
 
-import type { ChatCompletionsPayload } from "../src/services/copilot/create-chat-completions"
+import type { ChatCompletionsPayload } from "~/types"
+
+import { CopilotClient } from "~/clients"
 
 import { state } from "../src/lib/state"
-import { createChatCompletions } from "../src/services/copilot/create-chat-completions"
 
 // Mock state
-state.copilotToken = "test-token"
-state.vsCodeVersion = "1.0.0"
-state.accountType = "individual"
+state.auth.copilotToken = "test-token"
+state.cache.vsCodeVersion = "1.0.0"
+state.config.accountType = "individual"
 
 // Helper to mock fetch
 const fetchMock = mock(
@@ -20,9 +21,6 @@ const fetchMock = mock(
     }
   },
 )
-// @ts-expect-error - Mock fetch doesn't implement all fetch properties
-;(globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock
-
 test("sets X-Initiator to agent if tool/assistant present", async () => {
   const payload: ChatCompletionsPayload = {
     messages: [
@@ -31,7 +29,15 @@ test("sets X-Initiator to agent if tool/assistant present", async () => {
     ],
     model: "gpt-test",
   }
-  await createChatCompletions(payload)
+  const client = new CopilotClient(
+    state.auth,
+    {
+      accountType: state.config.accountType,
+      vsCodeVersion: state.cache.vsCodeVersion,
+    },
+    { fetch: fetchMock as unknown as typeof fetch },
+  )
+  await client.createChatCompletions(payload)
   expect(fetchMock).toHaveBeenCalled()
   const headers = (
     fetchMock.mock.calls[0][1] as { headers: Record<string, string> }
@@ -47,7 +53,15 @@ test("sets X-Initiator to user if only user present", async () => {
     ],
     model: "gpt-test",
   }
-  await createChatCompletions(payload)
+  const client = new CopilotClient(
+    state.auth,
+    {
+      accountType: state.config.accountType,
+      vsCodeVersion: state.cache.vsCodeVersion,
+    },
+    { fetch: fetchMock as unknown as typeof fetch },
+  )
+  await client.createChatCompletions(payload)
   expect(fetchMock).toHaveBeenCalled()
   const headers = (
     fetchMock.mock.calls[1][1] as { headers: Record<string, string> }

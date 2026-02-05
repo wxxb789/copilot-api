@@ -1,53 +1,4 @@
-import consola from "consola"
-import { events } from "fetch-event-stream"
-
-import { copilotHeaders, copilotBaseUrl } from "~/lib/api-config"
-import { HTTPError } from "~/lib/error"
-import { state } from "~/lib/state"
-
-export const createChatCompletions = async (
-  payload: ChatCompletionsPayload,
-) => {
-  if (!state.copilotToken) throw new Error("Copilot token not found")
-
-  const enableVision = payload.messages.some(
-    (x) =>
-      typeof x.content !== "string"
-      && x.content?.some((x) => x.type === "image_url"),
-  )
-
-  // Agent/user check for X-Initiator header
-  // Determine if any message is from an agent ("assistant" or "tool")
-  const isAgentCall = payload.messages.some((msg) =>
-    ["assistant", "tool"].includes(msg.role),
-  )
-
-  // Build headers and add X-Initiator
-  const headers: Record<string, string> = {
-    ...copilotHeaders(state, enableVision),
-    "X-Initiator": isAgentCall ? "agent" : "user",
-  }
-
-  const response = await fetch(`${copilotBaseUrl(state)}/chat/completions`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-  })
-
-  if (!response.ok) {
-    consola.error("Failed to create chat completions", response)
-    throw new HTTPError("Failed to create chat completions", response)
-  }
-
-  if (payload.stream) {
-    return events(response)
-  }
-
-  return (await response.json()) as ChatCompletionResponse
-}
-
 // Streaming types
-
 export interface ChatCompletionChunk {
   id: string
   object: "chat.completion.chunk"
@@ -91,7 +42,6 @@ interface Choice {
 }
 
 // Non-streaming types
-
 export interface ChatCompletionResponse {
   id: string
   object: "chat.completion"
@@ -123,7 +73,6 @@ interface ChoiceNonStreaming {
 }
 
 // Payload types
-
 export interface ChatCompletionsPayload {
   messages: Array<Message>
   model: string
@@ -189,5 +138,70 @@ export interface ImagePart {
   image_url: {
     url: string
     detail?: "low" | "high" | "auto"
+  }
+}
+
+// Embeddings
+export interface EmbeddingRequest {
+  input: string | Array<string>
+  model: string
+}
+
+export interface Embedding {
+  object: string
+  embedding: Array<number>
+  index: number
+}
+
+export interface EmbeddingResponse {
+  object: string
+  data: Array<Embedding>
+  model: string
+  usage: {
+    prompt_tokens: number
+    total_tokens: number
+  }
+}
+
+// Models
+export interface ModelsResponse {
+  data: Array<Model>
+  object: string
+}
+
+interface ModelLimits {
+  max_context_window_tokens?: number
+  max_output_tokens?: number
+  max_prompt_tokens?: number
+  max_inputs?: number
+}
+
+interface ModelSupports {
+  tool_calls?: boolean
+  parallel_tool_calls?: boolean
+  dimensions?: boolean
+}
+
+interface ModelCapabilities {
+  family: string
+  limits: ModelLimits
+  object: string
+  supports: ModelSupports
+  tokenizer: string
+  type: string
+}
+
+export interface Model {
+  capabilities: ModelCapabilities
+  id: string
+  model_picker_enabled: boolean
+  name: string
+  object: string
+  preview: boolean
+  vendor: string
+  version: string
+  policy?: {
+    state: string
+    terms: string
   }
 }

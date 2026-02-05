@@ -1,17 +1,19 @@
-import { GITHUB_API_BASE_URL, githubHeaders } from "~/lib/api-config"
-import { HTTPError } from "~/lib/error"
-import { state } from "~/lib/state"
+export interface DeviceCodeResponse {
+  device_code: string
+  user_code: string
+  verification_uri: string
+  expires_in: number
+  interval: number
+}
 
-export const getCopilotUsage = async (): Promise<CopilotUsageResponse> => {
-  const response = await fetch(`${GITHUB_API_BASE_URL}/copilot_internal/user`, {
-    headers: githubHeaders(state),
-  })
+export interface GetCopilotTokenResponse {
+  expires_at: number
+  refresh_in: number
+  token: string
+}
 
-  if (!response.ok) {
-    throw new HTTPError("Failed to get Copilot usage", response)
-  }
-
-  return (await response.json()) as CopilotUsageResponse
+export interface GithubUserResponse {
+  login: string
 }
 
 export interface QuotaDetail {
@@ -31,7 +33,7 @@ interface QuotaSnapshots {
   premium_interactions: QuotaDetail
 }
 
-interface CopilotUsageResponse {
+export interface CopilotUsageResponse {
   access_type_sku: string
   analytics_tracking_id: string
   assigned_date: string

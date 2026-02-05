@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import type { State } from "./state"
+import type { ClientAuth, ClientConfig } from "~/clients"
 
 export const standardHeaders = () => ({
   "content-type": "application/json",
@@ -13,16 +13,20 @@ const USER_AGENT = `GitHubCopilotChat/${COPILOT_VERSION}`
 
 const API_VERSION = "2025-04-01"
 
-export const copilotBaseUrl = (state: State) =>
-  state.accountType === "individual" ?
+export const copilotBaseUrl = (config: ClientConfig) =>
+  config.accountType === "individual" ?
     "https://api.githubcopilot.com"
-  : `https://api.${state.accountType}.githubcopilot.com`
-export const copilotHeaders = (state: State, vision: boolean = false) => {
+  : `https://api.${config.accountType}.githubcopilot.com`
+export const copilotHeaders = (
+  auth: ClientAuth,
+  config: ClientConfig,
+  vision: boolean = false,
+) => {
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${state.copilotToken}`,
+    Authorization: `Bearer ${auth.copilotToken}`,
     "content-type": standardHeaders()["content-type"],
     "copilot-integration-id": "vscode-chat",
-    "editor-version": `vscode/${state.vsCodeVersion}`,
+    "editor-version": `vscode/${config.vsCodeVersion ?? "unknown"}`,
     "editor-plugin-version": EDITOR_PLUGIN_VERSION,
     "user-agent": USER_AGENT,
     "openai-intent": "conversation-panel",
@@ -37,10 +41,10 @@ export const copilotHeaders = (state: State, vision: boolean = false) => {
 }
 
 export const GITHUB_API_BASE_URL = "https://api.github.com"
-export const githubHeaders = (state: State) => ({
+export const githubHeaders = (auth: ClientAuth, config: ClientConfig) => ({
   ...standardHeaders(),
-  authorization: `token ${state.githubToken}`,
-  "editor-version": `vscode/${state.vsCodeVersion}`,
+  authorization: `token ${auth.githubToken}`,
+  "editor-version": `vscode/${config.vsCodeVersion ?? "unknown"}`,
   "editor-plugin-version": EDITOR_PLUGIN_VERSION,
   "user-agent": USER_AGENT,
   "x-github-api-version": API_VERSION,
