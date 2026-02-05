@@ -51,31 +51,13 @@ export async function handleCompletion(c: Context) {
 
   consola.debug("Streaming response")
   return streamSSE(c, async (stream) => {
-    const keepaliveMs =
-      state.config.sseKeepaliveSeconds && state.config.sseKeepaliveSeconds > 0 ?
-        state.config.sseKeepaliveSeconds * 1000
-      : 0
-    const heartbeat =
-      keepaliveMs > 0 ?
-        setInterval(() => {
-          void stream.write(": ping\n\n")
-        }, keepaliveMs)
-      : undefined
-
-    if (heartbeat) {
-      stream.onAbort(() => {
-        clearInterval(heartbeat)
-      })
-    }
     try {
       for await (const chunk of response) {
         consola.debug("Streaming chunk:", JSON.stringify(chunk))
         await stream.writeSSE(chunk as SSEMessage)
       }
     } finally {
-      if (heartbeat) {
-        clearInterval(heartbeat)
-      }
+      // No cleanup needed without keepalive.
     }
   })
 }

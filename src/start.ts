@@ -29,7 +29,6 @@ interface RunServerOptions {
   showToken: boolean
   proxyEnv: boolean
   idleTimeoutSeconds?: number
-  sseKeepaliveSeconds?: number
 }
 
 async function maybeCopyClaudeCodeCommand(serverUrl: string): Promise<void> {
@@ -123,8 +122,6 @@ export async function runServer(options: RunServerOptions): Promise<void> {
   state.config.rateLimitSeconds = options.rateLimit
   state.config.rateLimitWait = options.rateLimitWait
   state.config.showToken = options.showToken
-  state.config.sseKeepaliveSeconds =
-    options.sseKeepaliveSeconds ?? state.config.sseKeepaliveSeconds
 
   await ensurePaths()
   await cacheVSCodeVersion()
@@ -236,11 +233,6 @@ export const start = defineCommand({
       default: "120",
       description: "Bun server idle timeout in seconds",
     },
-    "sse-keepalive": {
-      type: "string",
-      default: "60",
-      description: "SSE keepalive interval in seconds (0 disables)",
-    },
   },
   run({ args }) {
     const rateLimitRaw = args["rate-limit"]
@@ -262,24 +254,6 @@ export const start = defineCommand({
       )
       idleTimeoutSeconds = undefined
     }
-    const sseKeepaliveRaw = args["sse-keepalive"]
-    let sseKeepaliveSeconds =
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      sseKeepaliveRaw === undefined ? undefined : (
-        Number.parseInt(sseKeepaliveRaw, 10)
-      )
-    if (
-      sseKeepaliveSeconds !== undefined
-      && (Number.isNaN(sseKeepaliveSeconds) || sseKeepaliveSeconds < 0)
-    ) {
-      consola.warn(
-        `Invalid --sse-keepalive value "${sseKeepaliveRaw}". Disabling keepalive.`,
-      )
-      sseKeepaliveSeconds = undefined
-    }
-    if (sseKeepaliveSeconds === 0) {
-      sseKeepaliveSeconds = undefined
-    }
 
     return runServer({
       port: Number.parseInt(args.port, 10),
@@ -293,7 +267,6 @@ export const start = defineCommand({
       showToken: args["show-token"],
       proxyEnv: args["proxy-env"],
       idleTimeoutSeconds,
-      sseKeepaliveSeconds,
     })
   },
 })

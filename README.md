@@ -175,7 +175,6 @@ The following command line options are available for the `start` command:
 | --show-token   | Show GitHub and Copilot tokens on fetch and refresh                           | false      | none  |
 | --proxy-env    | Initialize proxy from environment variables                                   | false      | none  |
 | --idle-timeout | Bun server idle timeout in seconds                                            | 120        | none  |
-| --sse-keepalive | SSE keepalive interval in seconds (0 disables)                               | 60         | none  |
 
 ### Auth Command Options
 

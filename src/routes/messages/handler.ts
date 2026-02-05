@@ -51,22 +51,6 @@ export async function handleCompletion(c: Context) {
 
   consola.debug("Streaming response from Copilot")
   return streamSSE(c, async (stream) => {
-    const keepaliveMs =
-      state.config.sseKeepaliveSeconds && state.config.sseKeepaliveSeconds > 0 ?
-        state.config.sseKeepaliveSeconds * 1000
-      : 0
-    const heartbeat =
-      keepaliveMs > 0 ?
-        setInterval(() => {
-          void stream.write(": ping\n\n")
-        }, keepaliveMs)
-      : undefined
-
-    if (heartbeat) {
-      stream.onAbort(() => {
-        clearInterval(heartbeat)
-      })
-    }
     const streamTranslator = translator.createStreamTranslator()
 
     try {
@@ -92,9 +76,7 @@ export async function handleCompletion(c: Context) {
         }
       }
     } finally {
-      if (heartbeat) {
-        clearInterval(heartbeat)
-      }
+      // No cleanup needed without keepalive.
     }
   })
 }
