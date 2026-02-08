@@ -10,7 +10,6 @@ const tempConfigPath = path.join(tempDir, "config.json")
 mock.module("../src/lib/paths", () => ({
   PATHS: {
     APP_DIR: tempDir,
-    GITHUB_TOKEN_PATH: path.join(tempDir, "github_token"),
     CONFIG_PATH: tempConfigPath,
   },
 }))

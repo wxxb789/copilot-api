@@ -4,7 +4,7 @@ import { defineCommand } from "citty"
 import consola from "consola"
 
 import { readConfig } from "./lib/config"
-import { PATHS, ensurePaths } from "./lib/paths"
+import { ensurePaths } from "./lib/paths"
 import { state } from "./lib/state"
 import { setupGitHubToken } from "./lib/token"
 import { cacheVSCodeVersion } from "./lib/utils"
@@ -26,9 +26,7 @@ export async function runAuth(options: RunAuthOptions): Promise<void> {
   await readConfig()
   await cacheVSCodeVersion()
   await setupGitHubToken({ force: true })
-  consola.success(
-    `GitHub token written to ${PATHS.GITHUB_TOKEN_PATH} and config.json`,
-  )
+  consola.success("GitHub token written to config.json")
 }
 
 export const auth = defineCommand({

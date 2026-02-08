@@ -5,6 +5,7 @@ import consola from "consola"
 import fs from "node:fs/promises"
 import os from "node:os"
 
+import { getCachedConfig } from "./lib/config"
 import { PATHS } from "./lib/paths"
 
 interface DebugInfo {
@@ -18,7 +19,6 @@ interface DebugInfo {
   paths: {
     APP_DIR: string
     CONFIG_PATH: string
-    GITHUB_TOKEN_PATH: string
   }
   configExists: boolean
   tokenExists: boolean
@@ -53,15 +53,12 @@ function getRuntimeInfo() {
   }
 }
 
-async function checkTokenExists(): Promise<boolean> {
+function checkTokenExists(): Promise<boolean> {
   try {
-    const stats = await fs.stat(PATHS.GITHUB_TOKEN_PATH)
-    if (!stats.isFile()) return false
-
-    const content = await fs.readFile(PATHS.GITHUB_TOKEN_PATH, "utf8")
-    return content.trim().length > 0
+    const config = getCachedConfig()
+    return Promise.resolve(Boolean(config.githubToken?.trim()))
   } catch {
-    return false
+    return Promise.resolve(false)
   }
 }
 
@@ -90,7 +87,6 @@ async function getDebugInfo(): Promise<DebugInfo> {
     paths: {
       APP_DIR: PATHS.APP_DIR,
       CONFIG_PATH: PATHS.CONFIG_PATH,
-      GITHUB_TOKEN_PATH: PATHS.GITHUB_TOKEN_PATH,
     },
     configExists,
     tokenExists,
@@ -106,7 +102,6 @@ Runtime: ${info.runtime.name} ${info.runtime.version} (${info.runtime.platform} 
 Paths:
 - APP_DIR: ${info.paths.APP_DIR}
 - CONFIG_PATH: ${info.paths.CONFIG_PATH}
-- GITHUB_TOKEN_PATH: ${info.paths.GITHUB_TOKEN_PATH}
 
 Config exists: ${info.configExists ? "Yes" : "No"}
 Token exists: ${info.tokenExists ? "Yes" : "No"}`)
