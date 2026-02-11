@@ -3,6 +3,7 @@ export { AnthropicTranslator } from "./anthropic/anthropic-translator"
 export type {
   AnthropicAssistantContentBlock,
   AnthropicAssistantMessage,
+  AnthropicCountTokensPayload,
   AnthropicErrorEvent,
   AnthropicImageBlock,
   AnthropicMessage,

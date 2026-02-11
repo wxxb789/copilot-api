@@ -33,16 +33,34 @@ export class AnthropicStreamTranslator {
     return events
   }
 
-  onError(): Array<AnthropicStreamEventData> {
+  onError(error?: unknown): Array<AnthropicStreamEventData> {
+    const message = this.getErrorMessage(error)
     return [
       {
         type: "error",
         error: {
           type: "api_error",
-          message: "An unexpected error occurred during streaming.",
+          message,
         },
       },
     ]
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (this.isTimeoutError(error)) {
+      return "Upstream streaming request timed out. Please retry."
+    }
+    return "An unexpected error occurred during streaming."
+  }
+
+  private isTimeoutError(error: unknown): boolean {
+    if (error instanceof DOMException) {
+      return error.name === "TimeoutError"
+    }
+    if (error instanceof Error) {
+      return error.name === "TimeoutError"
+    }
+    return false
   }
 
   private isToolBlockOpen(): boolean {

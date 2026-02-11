@@ -2,8 +2,7 @@ import { test, expect, mock } from "bun:test"
 
 import type { ChatCompletionsPayload } from "~/types"
 
-import { CopilotClient } from "~/clients"
-
+import { CopilotClient } from "../src/clients/copilot-client"
 import { state } from "../src/lib/state"
 
 // Mock state

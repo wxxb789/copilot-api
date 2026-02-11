@@ -25,7 +25,10 @@ export class CopilotClient {
     this.fetchImpl = deps?.fetch ?? fetch
   }
 
-  async createChatCompletions(payload: ChatCompletionsPayload) {
+  async createChatCompletions(
+    payload: ChatCompletionsPayload,
+    options?: { signal?: AbortSignal },
+  ) {
     if (!this.auth.copilotToken) throw new Error("Copilot token not found")
 
     const enableVision = payload.messages.some(
@@ -50,6 +53,7 @@ export class CopilotClient {
         method: "POST",
         headers,
         body: JSON.stringify(payload),
+        signal: options?.signal,
       },
     )
 

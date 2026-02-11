@@ -1,7 +1,10 @@
 import consola from "consola"
 import { z } from "zod"
 
-import type { AnthropicMessagesPayload } from "~/translator"
+import type {
+  AnthropicCountTokensPayload,
+  AnthropicMessagesPayload,
+} from "~/translator"
 import type { ChatCompletionsPayload, EmbeddingRequest } from "~/types"
 
 import { HTTPError } from "./error"
@@ -30,11 +33,22 @@ const anthropicMessageSchema = z
   })
   .loose()
 
-const anthropicMessagesPayloadSchema = z
+const anthropicMessagesBasePayloadSchema = z
   .object({
     model: z.string(),
     messages: z.array(anthropicMessageSchema).min(1),
+  })
+  .loose()
+
+const anthropicMessagesPayloadSchema = anthropicMessagesBasePayloadSchema
+  .extend({
     max_tokens: z.number(),
+  })
+  .loose()
+
+const anthropicCountTokensPayloadSchema = anthropicMessagesBasePayloadSchema
+  .extend({
+    max_tokens: z.number().optional(),
   })
   .loose()
 
@@ -74,6 +88,16 @@ export const parseAnthropicMessagesPayload = (
     throwInvalidPayload("anthropic.messages", result.error.issues)
   }
   return result.data as AnthropicMessagesPayload
+}
+
+export const parseAnthropicCountTokensPayload = (
+  payload: unknown,
+): AnthropicCountTokensPayload => {
+  const result = anthropicCountTokensPayloadSchema.safeParse(payload)
+  if (!result.success) {
+    throwInvalidPayload("anthropic.messages.count_tokens", result.error.issues)
+  }
+  return result.data as AnthropicCountTokensPayload
 }
 
 export const parseEmbeddingRequest = (payload: unknown): EmbeddingRequest => {

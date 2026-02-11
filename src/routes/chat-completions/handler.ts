@@ -42,7 +42,9 @@ export async function handleCompletion(c: Context) {
   }
 
   const copilotClient = new CopilotClient(state.auth, getClientConfig(state))
-  const response = await copilotClient.createChatCompletions(payload)
+  const response = await copilotClient.createChatCompletions(payload, {
+    signal: c.req.raw.signal,
+  })
 
   if (isNonStreaming(response)) {
     consola.debug("Non-streaming response:", JSON.stringify(response))

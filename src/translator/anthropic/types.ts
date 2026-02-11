@@ -25,6 +25,13 @@ export interface AnthropicMessagesPayload {
   service_tier?: "auto" | "standard_only"
 }
 
+export type AnthropicCountTokensPayload = Omit<
+  AnthropicMessagesPayload,
+  "max_tokens"
+> & {
+  max_tokens?: number
+}
+
 export interface AnthropicTextBlock {
   type: "text"
   text: string
