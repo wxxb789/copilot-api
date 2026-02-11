@@ -22,11 +22,11 @@ await mock.module("consola", () => ({
 }))
 
 const mockPollAccessToken = mock(() => Promise.resolve("new-test-token"))
-await mock.module("../src/clients", () => ({
+await mock.module("../src/clients/vscode-client", () => ({
   getVSCodeVersion: mock(() => Promise.resolve("1.91.0")),
-  CopilotClient: class {
-    getModels = () => Promise.resolve({ data: [] })
-  },
+}))
+
+await mock.module("../src/clients/github-client", () => ({
   GitHubClient: class {
     getGitHubUser = () => Promise.resolve({ login: "test-user" })
     getDeviceCode = () =>
@@ -95,7 +95,9 @@ describe("Token file removal (RED phase)", () => {
     await setupGitHubToken({ force: true })
 
     const configContent = await fs.readFile(PATHS.CONFIG_PATH)
-    const config = JSON.parse(configContent) as { githubToken: string }
+    const config = JSON.parse(configContent.toString("utf8")) as {
+      githubToken: string
+    }
 
     expect(config.githubToken).toBe("new-test-token")
   })

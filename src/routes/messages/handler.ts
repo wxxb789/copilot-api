@@ -34,7 +34,9 @@ export async function handleCompletion(c: Context) {
   )
 
   const copilotClient = new CopilotClient(state.auth, getClientConfig(state))
-  const response = await copilotClient.createChatCompletions(openAIPayload)
+  const response = await copilotClient.createChatCompletions(openAIPayload, {
+    signal: c.req.raw.signal,
+  })
 
   if (isNonStreaming(response)) {
     consola.debug(
@@ -75,8 +77,20 @@ export async function handleCompletion(c: Context) {
           })
         }
       }
-    } finally {
-      // No cleanup needed without keepalive.
+    } catch (error) {
+      if (c.req.raw.signal.aborted) {
+        consola.debug("Client disconnected during Anthropic stream")
+        return
+      }
+
+      consola.error("Error streaming Anthropic response:", error)
+      const errorEvents = streamTranslator.onError(error)
+      for (const event of errorEvents) {
+        await stream.writeSSE({
+          event: event.type,
+          data: JSON.stringify(event),
+        })
+      }
     }
   })
 }
